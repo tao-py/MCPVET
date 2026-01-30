@@ -1,0 +1,248 @@
+{
+  "translations": {
+    "English": {
+      "ENGLISH": "English",
+      "CHINESE": "英文"
+    },
+    "Chinese": {
+      "ENGLISH": "Chinese",
+      "CHINESE": "中文"
+    },
+    "File": {
+      "ENGLISH": "File",
+      "CHINESE": "文件"
+    },
+    "New": {
+      "ENGLISH": "New",
+      "CHINESE": "新建"
+    },
+    "Open": {
+      "ENGLISH": "Open",
+      "CHINESE": "打开"
+    },
+    "Save": {
+      "ENGLISH": "Save",
+      "CHINESE": "保存"
+    },
+    "SaveAs": {
+      "ENGLISH": "Save As",
+      "CHINESE": "另存为"
+    },
+    "Exit": {
+      "ENGLISH": "Exit",
+      "CHINESE": "退出"
+    },
+    "Create": {
+      "ENGLISH": "Create",
+      "CHINESE": "创建"
+    },
+    "Cube": {
+      "ENGLISH": "Cube",
+      "CHINESE": "立方体"
+    },
+    "Sphere": {
+      "ENGLISH": "Sphere",
+      "CHINESE": "球体"
+    },
+    "Cylinder": {
+      "ENGLISH": "Cylinder",
+      "CHINESE": "圆柱体"
+    },
+    "Plane": {
+      "ENGLISH": "Plane",
+      "CHINESE": "平面"
+    },
+    "Line": {
+      "ENGLISH": "Line",
+      "CHINESE": "线段"
+    },
+    "Point": {
+      "ENGLISH": "Point",
+      "CHINESE": "点"
+    },
+    "Edit": {
+      "ENGLISH": "Edit",
+      "CHINESE": "编辑"
+    },
+    "Undo": {
+      "ENGLISH": "Undo",
+      "CHINESE": "撤销"
+    },
+    "Redo": {
+      "ENGLISH": "Redo",
+      "CHINESE": "重做"
+    },
+    "Delete": {
+      "ENGLISH": "Delete",
+      "CHINESE": "删除"
+    },
+    "Boolean": {
+      "ENGLISH": "Boolean",
+      "CHINESE": "布尔运算"
+    },
+    "Union": {
+      "ENGLISH": "Union",
+      "CHINESE": "并集"
+    },
+    "Difference": {
+      "ENGLISH": "Difference",
+      "CHINESE": "差集"
+    },
+    "Intersection": {
+      "ENGLISH": "Intersection",
+      "CHINESE": "交集"
+    },
+    "Settings": {
+      "ENGLISH": "Settings",
+      "CHINESE": "设置"
+    },
+    "KeyBindings": {
+      "ENGLISH": "Key Bindings",
+      "CHINESE": "快捷键"
+    },
+    "UISettings": {
+      "ENGLISH": "UI Settings",
+      "CHINESE": "界面设置"
+    },
+    "Language": {
+      "ENGLISH": "Language",
+      "CHINESE": "语言"
+    },
+    "ViewOptions": {
+      "ENGLISH": "View Options",
+      "CHINESE": "视图选项"
+    },
+    "ShowGrid": {
+      "ENGLISH": "Show Grid",
+      "CHINESE": "显示网格"
+    },
+    "GridColor": {
+      "ENGLISH": "Grid Color",
+      "CHINESE": "网格颜色"
+    },
+    "Camera": {
+      "ENGLISH": "Camera",
+      "CHINESE": "相机"
+    },
+    "Distance": {
+      "ENGLISH": "Distance",
+      "CHINESE": "距离"
+    },
+    "AngleX": {
+      "ENGLISH": "Angle X",
+      "CHINESE": "X角度"
+    },
+    "AngleY": {
+      "ENGLISH": "Angle Y",
+      "CHINESE": "Y角度"
+    },
+    "Performance": {
+      "ENGLISH": "Performance",
+      "CHINESE": "性能"
+    },
+    "FPSLimit": {
+      "ENGLISH": "FPS Limit",
+      "CHINESE": "帧率限制"
+    },
+    "UIFont": {
+      "ENGLISH": "UI Font",
+      "CHINESE": "界面字体"
+    },
+    "FontSize": {
+      "ENGLISH": "Font Size",
+      "CHINESE": "字体大小"
+    },
+    "Objects": {
+      "ENGLISH": "Objects",
+      "CHINESE": "对象"
+    },
+    "AddCube": {
+      "ENGLISH": "Add Cube",
+      "CHINESE": "添加立方体"
+    },
+    "AddSphere": {
+      "ENGLISH": "Add Sphere",
+      "CHINESE": "添加球体"
+    },
+    "AddCylinder": {
+      "ENGLISH": "Add Cylinder",
+      "CHINESE": "添加圆柱体"
+    },
+    "AddPlane": {
+      "ENGLISH": "Add Plane",
+      "CHINESE": "添加平面"
+    },
+    "AddPoint": {
+      "ENGLISH": "Add Point",
+      "CHINESE": "添加点"
+    },
+    "AddLine": {
+      "ENGLISH": "Add Line",
+      "CHINESE": "添加线段"
+    },
+    "ObjectProperties": {
+      "ENGLISH": "Object Properties",
+      "CHINESE": "对象属性"
+    },
+    "Name": {
+      "ENGLISH": "Name",
+      "CHINESE": "名称"
+    },
+    "Transform": {
+      "ENGLISH": "Transform",
+      "CHINESE": "变换"
+    },
+    "Position": {
+      "ENGLISH": "Position",
+      "CHINESE": "位置"
+    },
+    "Rotation": {
+      "ENGLISH": "Rotation",
+      "CHINESE": "旋转"
+    },
+    "Scale": {
+      "ENGLISH": "Scale",
+      "CHINESE": "缩放"
+    },
+    "Color": {
+      "ENGLISH": "Color",
+      "CHINESE": "颜色"
+    },
+    "DeleteObject": {
+      "ENGLISH": "Delete Object",
+      "CHINESE": "删除对象"
+    },
+    "SelectedObject": {
+      "ENGLISH": "Selected Object",
+      "CHINESE": "选中对象"
+    },
+    "MaterialColor": {
+      "ENGLISH": "Material Color",
+      "CHINESE": "材质颜色"
+    },
+    "EnterCommand": {
+      "ENGLISH": "Enter command (e.g., translate, scale, rotate): ",
+      "CHINESE": "输入命令 (例如: 平移, 缩放, 旋转): "
+    },
+    "Execute": {
+      "ENGLISH": "Execute",
+      "CHINESE": "执行"
+    },
+    "Clear": {
+      "ENGLISH": "Clear",
+      "CHINESE": "清除"
+    },
+    "RecentCommands": {
+      "ENGLISH": "Recent commands:",
+      "CHINESE": "最近命令:"
+    },
+    "3DModelingTool": {
+      "ENGLISH": "3D Modeling Tool",
+      "CHINESE": "3D建模工具"
+    },
+    "ObjectsCount": {
+      "ENGLISH": " objects | ",
+      "CHINESE": " 个对象 | "
+    }
+  }
+}
