@@ -34,7 +34,7 @@ void saveScene(const std::string& filename)
     scene["scene_settings"]["camera_angles"] = {sceneState.cameraAngles.x, sceneState.cameraAngles.y};
     
     // 保存所有网格
-    for (int i = 0; i < meshes.size(); i++) {
+    for (size_t i = 0; i < meshes.size(); i++) {
         json meshJson;
         meshJson["name"] = meshes[i].name;
         
@@ -216,7 +216,7 @@ void computeNormals(const std::vector<glm::vec3>& positions,
 void performBooleanOperation(BooleanOperation operation)
 {
     if (selectedMesh < 0 || secondMeshForBoolean < 0 || 
-        selectedMesh >= meshes.size() || secondMeshForBoolean >= meshes.size()) {
+        selectedMesh >= static_cast<int>(meshes.size()) || secondMeshForBoolean >= static_cast<int>(meshes.size())) {
         std::cout << "Please select two objects for boolean operation" << std::endl;
         return;
     }
@@ -370,7 +370,7 @@ int pickObject(double mouseX, double mouseY, int windowWidth, int windowHeight) 
     int closestMesh = -1;
     float closestDistance = std::numeric_limits<float>::max();
     
-    for (int i = 0; i < meshes.size(); i++) {
+    for (size_t i = 0; i < meshes.size(); i++) {
         const Mesh& mesh = meshes[i];
         
         // 对每个三角形进行射线相交检测

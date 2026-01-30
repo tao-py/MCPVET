@@ -21,9 +21,6 @@ void TransformController::updateDrag(int x, int y, int windowWidth, int windowHe
     float deltaX = (float)(x - startX) / windowWidth * 10.0f;  // 调整缩放系数
     float deltaY = (float)(startY - y) / windowHeight * 10.0f; // 注意Y轴翻转
     
-    // 获取当前位置
-    glm::vec3 currentPosition = glm::vec3(mesh.transform[3]);
-    
     // 应用位移
     glm::vec3 newPosition = initialPosition + glm::vec3(deltaX, deltaY, 0.0f);
     
@@ -51,6 +48,7 @@ void TransformController::startScale(int x, int y, const Mesh& mesh) {
 }
 
 void TransformController::updateScale(int x, int y, Mesh& mesh) {
+    (void)x; // 未使用参数
     if (!isScaling) return;
     
     // 计算缩放增量
@@ -90,6 +88,7 @@ void TransformController::endScale() {
 }
 
 void TransformController::startRotate(int x, int y, const Mesh& mesh) {
+    (void)mesh; // 未使用参数
     isRotating = true;
     startX = x;
     startY = y;

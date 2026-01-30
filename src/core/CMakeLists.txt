@@ -1,5 +1,6 @@
 # Core module library
 add_library(core
+    camera.cpp
     vertex_mesh.cpp
     geometry_factory.cpp
     geometry_model.cpp

@@ -123,10 +123,20 @@ void saveConfig()
     config["ui_settings"]["grid_color"] = {sceneState.gridColor.r, sceneState.gridColor.g, sceneState.gridColor.b};
     config["ui_settings"]["show_grid"] = sceneState.showGrid;
     
-    // 写入文件
+    // 写入文件（带错误处理）
     std::ofstream file(CONFIG_FILE);
-    file << config.dump(4);
-    file.close();
+    if (!file.is_open()) {
+        LogManager::getInstance()->logError("Failed to open config file for writing: " + CONFIG_FILE);
+        return;
+    }
+    try {
+        file << config.dump(4);
+        file.close();
+        LogManager::getInstance()->logInfo("Configuration saved successfully");
+    } catch (const std::exception& e) {
+        LogManager::getInstance()->logError("Failed to write config file: " + std::string(e.what()));
+        file.close();
+    }
 }
 
 // 加载配置
@@ -135,62 +145,67 @@ void loadConfig()
     std::ifstream file(CONFIG_FILE);
     if (!file.good()) {
         // 如果配置文件不存在，使用默认设置
+        LogManager::getInstance()->logInfo("Config file not found, using defaults");
         // 尝试从INI文件加载快捷键配置
         loadShortcutsFromIni("inits/shortcut.ini");
         return;
     }
     
     json config;
-    file >> config;
+    try {
+        file >> config;
+    } catch (const std::exception& e) {
+        LogManager::getInstance()->logError("Failed to parse config JSON: " + std::string(e.what()));
+        file.close();
+        loadShortcutsFromIni("inits/shortcut.ini");
+        return;
+    }
     file.close();
     
-    // 加载快捷键
-    if (config.contains("key_bindings")) {
-        if (config["key_bindings"].contains("rotate_camera"))
-            keyBindings.rotateCamera = config["key_bindings"]["rotate_camera"];
-        if (config["key_bindings"].contains("pan_camera"))
-            keyBindings.panCamera = config["key_bindings"]["pan_camera"];
-        if (config["key_bindings"].contains("create_cube"))
-            keyBindings.createCube = config["key_bindings"]["create_cube"];
-        if (config["key_bindings"].contains("create_sphere"))
-            keyBindings.createSphere = config["key_bindings"]["create_sphere"];
-        if (config["key_bindings"].contains("create_cylinder"))
-            keyBindings.createCylinder = config["key_bindings"]["create_cylinder"];
-        if (config["key_bindings"].contains("create_plane"))
-            keyBindings.createPlane = config["key_bindings"]["create_plane"];
-        if (config["key_bindings"].contains("create_line"))
-            keyBindings.createLine = config["key_bindings"]["create_line"];
-        if (config["key_bindings"].contains("create_point"))
-            keyBindings.createPoint = config["key_bindings"]["create_point"];
-        if (config["key_bindings"].contains("boolean_union"))
-            keyBindings.booleanUnion = config["key_bindings"]["boolean_union"];
-        if (config["key_bindings"].contains("boolean_difference"))
-            keyBindings.booleanDifference = config["key_bindings"]["boolean_difference"];
-        if (config["key_bindings"].contains("boolean_intersection"))
-            keyBindings.booleanIntersection = config["key_bindings"]["boolean_intersection"];
-        if (config["key_bindings"].contains("save_scene"))
-            keyBindings.saveScene = config["key_bindings"]["save_scene"];
-        if (config["key_bindings"].contains("load_scene"))
-            keyBindings.loadScene = config["key_bindings"]["load_scene"];
-        if (config["key_bindings"].contains("exit_app"))
-            keyBindings.exitApp = config["key_bindings"]["exit_app"];
+    // 加载快捷键（带类型检查）
+    if (config.contains("key_bindings") && config["key_bindings"].is_object()) {
+        const auto& kb = config["key_bindings"];
+        auto safeAssign = [&](std::string& target, const std::string& key) {
+            if (kb.contains(key) && kb[key].is_string()) {
+                target = kb[key];
+            }
+        };
+        safeAssign(keyBindings.rotateCamera, "rotate_camera");
+        safeAssign(keyBindings.panCamera, "pan_camera");
+        safeAssign(keyBindings.createCube, "create_cube");
+        safeAssign(keyBindings.createSphere, "create_sphere");
+        safeAssign(keyBindings.createCylinder, "create_cylinder");
+        safeAssign(keyBindings.createPlane, "create_plane");
+        safeAssign(keyBindings.createLine, "create_line");
+        safeAssign(keyBindings.createPoint, "create_point");
+        safeAssign(keyBindings.booleanUnion, "boolean_union");
+        safeAssign(keyBindings.booleanDifference, "boolean_difference");
+        safeAssign(keyBindings.booleanIntersection, "boolean_intersection");
+        safeAssign(keyBindings.saveScene, "save_scene");
+        safeAssign(keyBindings.loadScene, "load_scene");
+        safeAssign(keyBindings.exitApp, "exit_app");
     }
     
-    // 加载UI设置
-    if (config.contains("ui_settings")) {
-        if (config["ui_settings"].contains("font_size"))
-            sceneState.uiFontSize = config["ui_settings"]["font_size"];
-        if (config["ui_settings"].contains("grid_color")) {
-            sceneState.gridColor.r = config["ui_settings"]["grid_color"][0];
-            sceneState.gridColor.g = config["ui_settings"]["grid_color"][1];
-            sceneState.gridColor.b = config["ui_settings"]["grid_color"][2];
+    // 加载UI设置（带类型检查）
+    if (config.contains("ui_settings") && config["ui_settings"].is_object()) {
+        const auto& ui = config["ui_settings"];
+        if (ui.contains("font_size") && ui["font_size"].is_number()) {
+            sceneState.uiFontSize = ui["font_size"];
         }
-        if (config["ui_settings"].contains("show_grid"))
-            sceneState.showGrid = config["ui_settings"]["show_grid"];
+        if (ui.contains("grid_color") && ui["grid_color"].is_array() && ui["grid_color"].size() >= 3) {
+            if (ui["grid_color"][0].is_number()) sceneState.gridColor.r = ui["grid_color"][0];
+            if (ui["grid_color"][1].is_number()) sceneState.gridColor.g = ui["grid_color"][1];
+            if (ui["grid_color"][2].is_number()) sceneState.gridColor.b = ui["grid_color"][2];
+        }
+        if (ui.contains("show_grid") && ui["show_grid"].is_boolean()) {
+            sceneState.showGrid = ui["show_grid"];
+        }
     }
     
     // 从INI文件加载快捷键配置（优先级更高）
     loadShortcutsFromIni("inits/shortcut.ini");
+    
+    LogManager::getInstance()->logInfo("Configuration loaded successfully");
 }
 
 void updateUIFontSize(float size)

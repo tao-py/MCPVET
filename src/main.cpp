@@ -31,7 +31,6 @@
 
 // FPS控制相关 - 现在从config_manager.h获取
 
-// Viewport渲染回调函数
 static void RenderSceneToViewport(int viewportW, int viewportH)
 {
     // 这里替代原来主循环中"渲染网格/对象/坐标系"的那段
@@ -50,15 +49,107 @@ static void RenderSceneToViewport(int viewportW, int viewportH)
     if (sceneState.showGrid) {
         renderGrid(sceneState.cameraDistance, sceneState.gridColor);
     }
-    for (int i = 0; i < meshes.size(); i++) {
+    for (size_t i = 0; i < meshes.size(); i++) {
         renderMesh(meshes[i]);
     }
     renderCoordinateSystem(sceneState.viewMatrix, sceneState.projectionMatrix, sceneState.cameraDistance);
 }
 
+// 函数声明
+bool initGLFWAndWindow();
+bool initGLAD();
+void initOpenGLSettings();
+bool initConfig(bool& vsyncEnabled);
+bool initLogging();
+bool initImGui();
+bool initUI(std::unique_ptr<mcnp::ui::UILayoutManager>& layoutManager, bool& vsyncEnabled);
+bool initRendering();
+bool initDefaultModels();
+void mainLoop(bool vsyncEnabled, std::unique_ptr<mcnp::ui::UILayoutManager>& layoutManager);
+void cleanup();
+
 int main()
 {
-    // 初始化GLFW
+    bool vsyncEnabled = false;
+    std::unique_ptr<mcnp::ui::UILayoutManager> layoutManager;
+    
+    // 初始化GLFW和窗口
+    if (!initGLFWAndWindow()) {
+        return -1;
+    }
+    
+    // 初始化GLAD
+    if (!initGLAD()) {
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 设置OpenGL基本状态
+    initOpenGLSettings();
+    
+    // 加载配置和设置垂直同步
+    if (!initConfig(vsyncEnabled)) {
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 初始化日志系统
+    if (!initLogging()) {
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 初始化ImGui
+    if (!initImGui()) {
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 初始化UI组件
+    if (!initUI(layoutManager, vsyncEnabled)) {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 初始化渲染资源（着色器、网格、坐标系）
+    if (!initRendering()) {
+        cleanup();
+        glfwTerminate();
+        return -1;
+    }
+    
+    // 创建默认模型并添加到场景
+    if (!initDefaultModels()) {
+        cleanup();
+        glfwTerminate();
+        return -1;
+    }
+    
+    std::cout << "Entering main render loop..." << std::endl;
+    std::cout << "Total objects in scene: " << meshes.size() << std::endl;
+    
+    // 主渲染循环
+    mainLoop(vsyncEnabled, layoutManager);
+    
+    // 保存配置
+    saveConfig();
+    
+    // 刷新并保存日志
+    LogManager::getInstance()->flush();
+    
+    // 清理资源
+    cleanup();
+    
+    glfwTerminate();
+    return 0;
+}
+
+// 函数定义
+bool initGLFWAndWindow()
+{
     std::cout << "Initializing GLFW..." << std::endl;
     glfwInit();
     
@@ -80,8 +171,7 @@ int main()
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
+        return false;
     }
     std::cout << "Window created successfully" << std::endl;
     glfwMakeContextCurrent(window);
@@ -91,33 +181,58 @@ int main()
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetKeyCallback(window, key_callback);
     
-    // 初始化GLAD
+    return true;
+}
+
+bool initGLAD()
+{
     std::cout << "Initializing GLAD..." << std::endl;
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
-        glfwTerminate();
-        return -1;
+        return false;
     }
     std::cout << "GLAD initialized successfully" << std::endl;
     
     // 显示OpenGL版本和设备信息
     printOpenGLInfo();
     
+    return true;
+}
+
+void initOpenGLSettings()
+{
     // 设置深度测试
     glEnable(GL_DEPTH_TEST);
-    
+}
+
+bool initConfig(bool& vsyncEnabled)
+{
     // 加载配置
     std::cout << "Loading config..." << std::endl;
     loadConfig();
     
-    // 初始化日志系统
+    // 设置垂直同步（优先使用glfwSwapInterval控制帧率）
+    // 注意：垂直同步会将帧率限制在显示器刷新率（通常60Hz）
+    // 启用自定义FPS限制时禁用垂直同步以避免冲突
+    vsyncEnabled = false; // 始终禁用垂直同步，使用自定义FPS限制
+    glfwSwapInterval(0);
+    std::cout << "Vertical sync disabled (using custom FPS limit)" << std::endl;
+    
+    return true;
+}
+
+bool initLogging()
+{
     std::cout << "Initializing logging system..." << std::endl;
     LogManager* logger = LogManager::getInstance();
     logger->logInfo("Application started");
     logger->logOperation("Initialization", "Starting 3D modeling application");
-    
-    // 设置ImGUI
+    return true;
+}
+
+bool initImGui()
+{
     std::cout << "Initializing ImGui..." << std::endl;
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -174,6 +289,12 @@ int main()
     // 设置UI字体大小
     updateUIFontSize(sceneState.uiFontSize);
     
+    return true;
+}
+
+bool initUI(std::unique_ptr<mcnp::ui::UILayoutManager>& layoutManager, bool& vsyncEnabled)
+{
+    (void)vsyncEnabled; // 未使用参数
     // 初始化UI组件（RAII）
     auto topBar = std::make_unique<mcnp::ui::TopBarWindow>();
     auto sideBar = std::make_unique<mcnp::ui::SideBarWindow>();
@@ -182,8 +303,32 @@ int main()
     // 设置全局ViewportWindow指针用于输入控制
     g_viewportWindow = viewport.get();
     topBar->SetWindows(sideBar.get(), bottomBar.get(), viewport.get());
-    auto layoutManager = std::make_unique<mcnp::ui::UILayoutManager>(*topBar, *sideBar, *bottomBar, *viewport);
+    layoutManager = std::make_unique<mcnp::ui::UILayoutManager>(*topBar, *sideBar, *bottomBar, *viewport);
     
+    // 注意：这里需要将unique_ptr的所有权转移到外部，但由于layoutManager持有对其他组件的引用，
+    // 我们将组件移动到静态存储或全局变量，或者确保它们在main函数期间保持存活
+    // 目前，这些unique_ptr在函数结束时会被销毁，但layoutManager持有对它们的引用
+    // 这是一个问题。我们需要重新设计或将这些组件存储在main函数中。
+    // 作为临时解决方案，我们将它们移动到静态变量或全局变量。
+    // 更好的方案是将它们作为参数传入。
+    // 现在我们先保持原样，但需要确保它们不会在initUI函数结束时被销毁。
+    // 我们将它们移动到全局unique_ptr中。
+    // 但为了简化，我们先假设layoutManager会在main函数期间保持它们存活。
+    // 实际上，我们需要将topBar、sideBar、bottomBar、viewport作为引用或指针传递给layoutManager。
+    // 原代码中layoutManager接受引用，所以我们需要确保这些对象在main函数期间保持存活。
+    // 我们将在main函数中创建这些对象，然后传递给initUI。
+    // 修改：我们将这些对象的创建移到main函数中，然后通过参数传递给initUI。
+    // 但为了保持改动最小，我们暂时将它们作为静态变量。
+    static auto topBarStatic = std::move(topBar);
+    static auto sideBarStatic = std::move(sideBar);
+    static auto bottomBarStatic = std::move(bottomBar);
+    static auto viewportStatic = std::move(viewport);
+    
+    return true;
+}
+
+bool initRendering()
+{
     // 设置着色器
     std::cout << "Setting up shaders..." << std::endl;
     setupShaders();
@@ -196,6 +341,11 @@ int main()
     std::cout << "Setting up coordinate system..." << std::endl;
     setupCoordinateSystem();
     
+    return true;
+}
+
+bool initDefaultModels()
+{
     // 创建基本建模文件
     std::cout << "Creating basic models..." << std::endl;
     Mesh cubeMesh("Cube");
@@ -232,16 +382,18 @@ int main()
         meshes[0].selected = true;
     }
     
-    std::cout << "Entering main render loop..." << std::endl;
-    std::cout << "Total objects in scene: " << meshes.size() << std::endl;
-    
+    return true;
+}
+
+void mainLoop(bool vsyncEnabled, std::unique_ptr<mcnp::ui::UILayoutManager>& layoutManager)
+{
     // 主渲染循环
     while (!glfwWindowShouldClose(window))
     {
-        // 输出每秒的帧数信息（每100帧输出一次）
+        // 输出每秒的帧数信息（每100帧输出一次，输出前10次）
         static int frameCount = 0;
         frameCount++;
-        if (frameCount % 100 == 0) {
+        if (frameCount % 100 == 0 && frameCount <= 1000) {
             std::cout << "Frames rendered: " << frameCount << std::endl;
         }
         
@@ -250,20 +402,21 @@ int main()
         std::chrono::duration<float> frameDuration = currentFrameTime - lastFrameTime;
         deltaTime = frameDuration.count();
         
-        // FPS限制 - 对fpsLimit进行下限保护，避免除零错误
-        int effectiveFpsLimit = sceneState.fpsLimit > 0 ? sceneState.fpsLimit : 60;
-        float minFrameTime = 1.0f / effectiveFpsLimit;
-        if (deltaTime < minFrameTime) {
-            float sleepTime = minFrameTime - deltaTime;
-            // 确保sleepTime为正值，防止异常情况
-            if (sleepTime > 0) {
-                std::this_thread::sleep_for(std::chrono::duration<float>(sleepTime));
+        // FPS限制：如果垂直同步禁用且fpsLimit>0，使用sleep进行限制
+        if (!vsyncEnabled && sceneState.fpsLimit > 0) {
+            float minFrameTime = 1.0f / sceneState.fpsLimit;
+            if (deltaTime < minFrameTime) {
+                float sleepTime = minFrameTime - deltaTime;
+                // 确保sleepTime为正值，防止异常情况
+                if (sleepTime > 0) {
+                    std::this_thread::sleep_for(std::chrono::duration<float>(sleepTime));
+                }
+                
+                // 重新计算deltaTime以反映睡眠后的实际帧时间
+                currentFrameTime = std::chrono::steady_clock::now();
+                frameDuration = currentFrameTime - lastFrameTime;
+                deltaTime = frameDuration.count();
             }
-            
-            // 重新计算deltaTime以反映睡眠后的实际帧时间
-            currentFrameTime = std::chrono::steady_clock::now();
-            frameDuration = currentFrameTime - lastFrameTime;
-            deltaTime = frameDuration.count();
         }
         
         lastFrameTime = currentFrameTime;
@@ -296,13 +449,10 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    
-    // 保存配置
-    saveConfig();
-    
-    // 刷新并保存日志
-    LogManager::getInstance()->flush();
-    
+}
+
+void cleanup()
+{
     // 清理资源
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -321,7 +471,4 @@ int main()
     for (auto& mesh : originalMeshes) {
         releaseMeshResources(mesh);
     }
-    
-    glfwTerminate();
-    return 0;
 }

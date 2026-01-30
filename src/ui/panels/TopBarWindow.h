@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "ImGuiFileDialog.h"
 
 #include "../MWindows.h"
 #include "../../io/config_manager.h"
@@ -62,14 +63,14 @@ private:
                 LogManager::getInstance()->logOperation("File", "New scene");
             }
             if (ImGui::MenuItem("打开...")) {
-                ImGui::OpenPopup("OpenScenePopup");
+                OpenFileDialog("ChooseFileToOpenDlgKey", "Choose Scene File");
             }
             if (ImGui::MenuItem("保存")) {
                 saveScene(savePath_);
                 LogManager::getInstance()->logOperation("File", std::string("Save scene: ") + savePath_);
             }
             if (ImGui::MenuItem("另存为...")) {
-                ImGui::OpenPopup("SaveScenePopup");
+                OpenFileDialog("ChooseFileToSaveDlgKey", "Save Scene As");
             }
             ImGui::Separator();
             if (ImGui::MenuItem("退出")) {
@@ -226,32 +227,24 @@ private:
 
     void DrawPopups()
     {
-        if (ImGui::BeginPopupModal("OpenScenePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::InputText("场景路径", openPath_, sizeof(openPath_));
-            if (ImGui::Button("打开")) {
+        if (fileDialog_.Display("ChooseFileToOpenDlgKey")) {
+            if (fileDialog_.IsOk()) {
+                const std::string path = fileDialog_.GetFilePathName();
+                std::snprintf(openPath_, sizeof(openPath_), "%s", path.c_str());
                 loadScene(openPath_);
                 LogManager::getInstance()->logOperation("File", std::string("Open scene: ") + openPath_);
-                ImGui::CloseCurrentPopup();
             }
-            ImGui::SameLine();
-            if (ImGui::Button("取消")) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
+            fileDialog_.Close();
         }
 
-        if (ImGui::BeginPopupModal("SaveScenePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::InputText("场景路径", savePath_, sizeof(savePath_));
-            if (ImGui::Button("保存")) {
+        if (fileDialog_.Display("ChooseFileToSaveDlgKey")) {
+            if (fileDialog_.IsOk()) {
+                const std::string path = fileDialog_.GetFilePathName();
+                std::snprintf(savePath_, sizeof(savePath_), "%s", path.c_str());
                 saveScene(savePath_);
                 LogManager::getInstance()->logOperation("File", std::string("Save scene: ") + savePath_);
-                ImGui::CloseCurrentPopup();
             }
-            ImGui::SameLine();
-            if (ImGui::Button("取消")) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
+            fileDialog_.Close();
         }
     }
 
@@ -293,12 +286,26 @@ public:
     bool ConsoleLogEnabled() const noexcept { return consoleLogEnabled_; }
 
 private:
+    void OpenFileDialog(const char* key, const char* title)
+    {
+        IGFD::FileDialogConfig config;
+        config.path = "user/scenes/";
+
+        ImVec2 dialogSize = ImGui::GetMainViewport()->Size;
+        dialogSize.x *= 0.7f;
+        dialogSize.y *= 0.6f;
+        ImGui::SetNextWindowSize(dialogSize);
+
+        fileDialog_.OpenDialog(key, title, ".json,.JSON", config);
+    }
+
     MWindows* side_{nullptr};
     MWindows* bottom_{nullptr};
     ViewportWindow* viewport_{nullptr};
 
     inline static char openPath_[256] = "user/scenes/scene.json";
     inline static char savePath_[256] = "user/scenes/scene.json";
+    inline static IGFD::FileDialog fileDialog_;
 
     bool showAbout_{false};
     bool requestResetLayout_{false};

@@ -1,6 +1,7 @@
 #include "input_control.h"
 #include "transform_controller.h"
 #include "coordinate_system.h"  // 为了访问坐标系交互函数
+#include "../core/camera.h"
 #include "../ui/panels/ViewportWindow.h"
 #include <limits>
 #include <chrono>
@@ -11,7 +12,7 @@
 mcnp::ui::ViewportWindow* g_viewportWindow = nullptr;
 
 // 检查鼠标是否在Viewport上
-bool isMouseInViewport(GLFWwindow* window)
+bool isMouseInViewport([[maybe_unused]] GLFWwindow* window)
 {
     // 检查ImGui上下文是否存在
     if (!ImGui::GetCurrentContext()) {
@@ -20,7 +21,7 @@ bool isMouseInViewport(GLFWwindow* window)
     }
     
     // 严格检查：只有当鼠标确实在ViewportWindow上时才返回true
-    // 移除回退逻辑，避免在操作侧边栏时误判
+    // 移除回腾逻辑，避免在操作侧边栏时误判
     bool hovered = g_viewportWindow && g_viewportWindow->IsHovered();
     static bool lastHovered = false;
     if (hovered != lastHovered) {
@@ -42,14 +43,19 @@ static std::chrono::steady_clock::time_point lastScrollTime = std::chrono::stead
 static double accumulatedScroll = 0.0;
 
 // 处理输入
-void processInput(GLFWwindow* window)
+void processInput([[maybe_unused]] GLFWwindow* window)
 {
     // 处理键盘快捷键
     // 这部分在key_callback中处理
+    updateCameraFromState(sceneState.cameraAngles,
+                          sceneState.cameraDistance,
+                          sceneState.cameraTarget,
+                          sceneState.cameraPosition,
+                          sceneState.viewMatrix);
 }
 
 // 窗口大小改变回调
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebuffer_size_callback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] int width, [[maybe_unused]] int height)
 {
     glViewport(0, 0, width, height);
     sceneState.projectionMatrix = glm::perspective(
@@ -74,6 +80,11 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     
     // 检查鼠标是否在Viewport上
     bool inViewport = isMouseInViewport(window);
+    
+    // 如果ImGui想要捕获鼠标，且不在Viewport上，则忽略输入
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse && !inViewport) {
+        return;
+    }
     static bool lastInViewportButton = false;
     if (inViewport != lastInViewportButton) {
         lastInViewportButton = inViewport;
@@ -99,7 +110,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         rotateSceneAroundAxis(xoffset, yoffset, sceneState.cameraAngles);
     }
     // 检查是否正在进行对象变换
-    else if (transformCtrl.isTransforming() && selectedMesh >= 0 && selectedMesh < meshes.size() && inViewport) {
+    else if (transformCtrl.isTransforming() && selectedMesh >= 0 && static_cast<size_t>(selectedMesh) < meshes.size() && inViewport) {
         int width, height;
         glfwGetWindowSize(window, &width, &height);
         
@@ -154,10 +165,16 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 }
 
 // 鼠标滚轮回调
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scroll_callback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] double xoffset, double yoffset)
 {
     // 检查鼠标是否在Viewport上
-    if (!isMouseInViewport(window)) return;
+    bool inViewport = isMouseInViewport(window);
+    
+    // 如果ImGui想要捕获鼠标，且不在Viewport上，则忽略输入
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse && !inViewport) {
+        return;
+    }
+    if (!inViewport) return;
     
     // 计算时间差，用于计算滚动速度
     auto currentTime = std::chrono::steady_clock::now();
@@ -189,10 +206,23 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 }
 
 // 鼠标按键回调
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+void mouse_button_callback(GLFWwindow* window, int button, int action, [[maybe_unused]] int mods)
 {
     // 检查鼠标是否在Viewport上
     bool inViewport = isMouseInViewport(window);
+    
+    // 如果ImGui想要捕获鼠标，且不在Viewport上，则忽略输入
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse && !inViewport) {
+        return;
+    }
+    
+    // 调试输出
+    static int clickCount = 0;
+    if (action == GLFW_PRESS) {
+        clickCount++;
+        std::cout << "[Mouse] Button " << button << " pressed, inViewport: " << inViewport 
+                  << ", selectedMesh: " << selectedMesh << ", clickCount: " << clickCount << std::endl;
+    }
     
     // 左键选择对象或开始拖拽
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -216,7 +246,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             int pickedObject = inViewport ? pickObject(xpos, height - ypos, width, height) : -1;
             
             // 更新选择状态
-            for (int i = 0; i < meshes.size(); i++) {
+            for (size_t i = 0; i < meshes.size(); i++) {
                 meshes[i].selected = false;
             }
             
@@ -271,8 +301,13 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 // 键盘按键回调
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods)
 {
+    // 如果ImGui想要捕获键盘，则忽略输入
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureKeyboard) {
+        return;
+    }
+    
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         // 检查快捷键
         if (checkKeyBinding(keyBindings.createCube, key, mods)) {

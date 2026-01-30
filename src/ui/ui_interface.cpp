@@ -170,7 +170,7 @@ void renderUI()
                 // 重做操作实现
             }
             if (ImGui::MenuItem("Delete", "Del")) {
-                if (selectedMesh >= 0 && selectedMesh < meshes.size()) {
+                if (selectedMesh >= 0 && selectedMesh < static_cast<int>(meshes.size())) {
                     std::string deletedObjectName = meshes[selectedMesh].name;
                     meshes.erase(meshes.begin() + selectedMesh);
                     originalMeshes.erase(originalMeshes.begin() + selectedMesh);
@@ -339,13 +339,13 @@ void renderUI()
         ImGui::Separator();
         
         // 对象列表
-        for (int i = 0; i < meshes.size(); i++) {
-            bool isSelected = (selectedMesh == i);
+        for (size_t i = 0; i < meshes.size(); i++) {
+            bool isSelected = (static_cast<int>(i) == selectedMesh);
             if (ImGui::Selectable(meshes[i].name.c_str(), isSelected)) {
                 for (auto& mesh : meshes) {
                     mesh.selected = false;
                 }
-                selectedMesh = i;
+                selectedMesh = static_cast<int>(i);
                 meshes[i].selected = true;
             }
         }
@@ -354,7 +354,7 @@ void renderUI()
     }
     
     if (ImGui::BeginTabItem("Properties")) {
-        if (selectedMesh >= 0 && selectedMesh < meshes.size()) {
+        if (selectedMesh >= 0 && selectedMesh < static_cast<int>(meshes.size())) {
             ImGui::Text("Object Properties");
             ImGui::Text("Name: %s", meshes[selectedMesh].name.c_str());
             
@@ -392,7 +392,7 @@ void renderUI()
             
             ImGui::Separator();
             if (ImGui::Button("Delete Object", ImVec2(-1, 0))) {
-                if (selectedMesh >= 0 && selectedMesh < meshes.size()) {
+                if (selectedMesh >= 0 && selectedMesh < static_cast<int>(meshes.size())) {
                     std::string deletedObjectName = meshes[selectedMesh].name;
                     meshes.erase(meshes.begin() + selectedMesh);
                     originalMeshes.erase(originalMeshes.begin() + selectedMesh);
@@ -408,7 +408,7 @@ void renderUI()
     }
     
     if (ImGui::BeginTabItem("Boolean")) {
-        if (selectedMesh >= 0 && selectedMesh < meshes.size()) {
+        if (selectedMesh >= 0 && selectedMesh < static_cast<int>(meshes.size())) {
             ImGui::Text("Boolean Operations");
             ImGui::Text("Selected: %s", meshes[selectedMesh].name.c_str());
             
@@ -445,7 +445,7 @@ void renderUI()
     ImGui::End();
     
     // Command Window - 只在选中几何体且有键盘输入时显示
-    if (selectedMesh >= 0 && selectedMesh < meshes.size()) {
+    if (selectedMesh >= 0 && selectedMesh < static_cast<int>(meshes.size())) {
         ImGui::SetNextWindowPos(ImVec2(10, ImGui::GetMainViewport()->Size.y - 200), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(ImGui::GetMainViewport()->Size.x - 20, 180), ImGuiCond_FirstUseEver);
         ImGui::Begin("Command Window", nullptr, ImGuiWindowFlags_NoCollapse);

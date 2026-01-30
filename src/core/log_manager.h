@@ -18,8 +18,8 @@ private:
     static LogManager* instance;
     std::mutex logMutex;
     std::vector<std::string> dailyLogs;
-    const int MAX_LOG_ENTRIES = 1000;  // 每天最多1000行
-    const int MAX_LOG_DAYS = 15;       // 最多保留15天的日志
+    const size_t MAX_LOG_ENTRIES = 1000;  // 每天最多1000行
+    const size_t MAX_LOG_DAYS = 15;       // 最多保留15天的日志
     std::string logDirectory;
     std::string currentDate;
 

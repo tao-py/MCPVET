@@ -1,4 +1,4 @@
-# MCNPApp - 蒙卡程序可视化编辑工具
+# MCPVET - 蒙卡程序可视化编辑工具
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++](https://img.shields.io/badge/language-C++-blue.svg)](https://isocpp.org/)

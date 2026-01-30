@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DEFINE_MATH_OPERATORS
+#endif
 #include <imgui.h>
 #ifndef IMGUI_DISABLE
 #include <imgui_internal.h> // DockBuilder API
@@ -140,7 +143,7 @@ private:
         ImGui::End();
     }
 
-    void BuildDefaultLayout(ImGuiID dockspaceId)
+    void BuildDefaultLayout([[maybe_unused]] ImGuiID dockspaceId)
     {
         #ifdef IMGUI_HAS_DOCK
         // 初次运行建立默认 Dock 布局
