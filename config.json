@@ -1,0 +1,27 @@
+{
+    "key_bindings": {
+        "boolean_difference": "D",
+        "boolean_intersection": "I",
+        "boolean_union": "U",
+        "create_cube": "K",
+        "create_cylinder": "M",
+        "create_line": "O",
+        "create_plane": "N",
+        "create_point": "P",
+        "create_sphere": "L",
+        "exit_app": "ESCAPE",
+        "load_scene": "CTRL+O",
+        "pan_camera": "MOUSE_MIDDLE",
+        "rotate_camera": "MOUSE_RIGHT",
+        "save_scene": "CTRL+S"
+    },
+    "ui_settings": {
+        "font_size": 39.29999923706055,
+        "grid_color": [
+            0.5,
+            0.5,
+            0.5
+        ],
+        "show_grid": true
+    }
+}

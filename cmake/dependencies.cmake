@@ -106,7 +106,26 @@ if(EXISTS "${GLM_LOCAL_DIR}/glm/glm.hpp")
             ${GLM_LOCAL_DIR}
     )
 else()
-    find_package(glm REQUIRED)
+    # Try to find system glm first
+    find_package(glm QUIET)
+    if(NOT glm_FOUND)
+        message(STATUS "GLM not found, downloading via FetchContent")
+        include(FetchContent)
+        FetchContent_Declare(
+            glm
+            GIT_REPOSITORY https://github.com/g-truc/glm.git
+            GIT_TAG 0.9.9.8
+            DOWNLOAD_ONLY TRUE
+        )
+        FetchContent_MakeAvailable(glm)
+        
+        # Create interface library for glm (header-only)
+        add_library(glm::glm INTERFACE IMPORTED)
+        target_include_directories(glm::glm
+            INTERFACE
+                ${glm_SOURCE_DIR}
+        )
+    endif()
 endif()
 
 # nlohmann/json
@@ -121,8 +140,15 @@ if(NOT nlohmann_json_FOUND)
 endif()
 
 # Manifold (mesh boolean)
-# 使用本地已下载的Manifold库
-set(FETCHCONTENT_SOURCE_DIR_MANIFOLD "${CMAKE_SOURCE_DIR}/include/manifold" CACHE STRING "")
+# 检查本地是否有Manifold库
+set(MANIFOLD_LOCAL_DIR "${CMAKE_SOURCE_DIR}/include/manifold")
+if(EXISTS "${MANIFOLD_LOCAL_DIR}/CMakeLists.txt")
+    message(STATUS "Using local Manifold library from: ${MANIFOLD_LOCAL_DIR}")
+    set(FETCHCONTENT_SOURCE_DIR_MANIFOLD "${MANIFOLD_LOCAL_DIR}" CACHE STRING "")
+else()
+    message(STATUS "Downloading Manifold library via FetchContent")
+endif()
+
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "" FORCE)
 
 set(MANIFOLD_TEST OFF CACHE BOOL "" FORCE)
@@ -142,7 +168,6 @@ if(APPLE)
     set(MANIFOLD_CXX_STANDARD 17 CACHE STRING "" FORCE)
     set(MANIFOLD_CXX_EXTENSIONS OFF CACHE BOOL "" FORCE)
     set(MANIFOLD_CXX_STANDARD_REQUIRED ON CACHE BOOL "" FORCE)
-
 endif()
 
 FetchContent_MakeAvailable(manifold)
@@ -163,4 +188,7 @@ if(TARGET manifold AND NOT TARGET manifold::manifold)
     add_library(manifold::manifold ALIAS manifold)
 endif()
 
-message(STATUS "Using local Manifold library from: ${CMAKE_SOURCE_DIR}/include/manifold")
+if(NOT TARGET manifold)
+    message(WARNING "Manifold target not created, creating interface library")
+    add_library(manifold::manifold INTERFACE IMPORTED)
+endif()
