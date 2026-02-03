@@ -1,5 +1,6 @@
 #include "mcnp_app.h"
 #include "io/scene_manager.h"  // 添加对场景管理器的包含以访问模型文件常量
+#include "path/savepath.h"     // 可执行文件路径获取
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -237,7 +238,18 @@ bool initImGui()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.IniFilename = "imgui.ini";
+    
+    // 设置 imgui.ini 保存到可执行文件同目录下
+    static std::string imguiIniPath;
+    const std::string& exeDir = getExecutableDirectoryString();
+    if (!exeDir.empty()) {
+        // 使用 std::filesystem::path 确保跨平台路径分隔符
+        imguiIniPath = (std::filesystem::path(exeDir) / "imgui.ini").string();
+    } else {
+        // 回退到相对路径（相对于当前工作目录）
+        imguiIniPath = "imgui.ini";
+    }
+    io.IniFilename = imguiIniPath.c_str();
     std::cout << "ImGui ini filename: " << io.IniFilename << std::endl;
     // Docking：用于实现可拖拽/可缩放的布局
     // Note: ImGuiConfigFlags_DockingEnable not available in this version
@@ -295,34 +307,24 @@ bool initImGui()
 bool initUI(std::unique_ptr<mcnp::ui::UILayoutManager>& layoutManager, bool& vsyncEnabled)
 {
     (void)vsyncEnabled; // 未使用参数
-    // 初始化UI组件（RAII）
+
+    // 创建UI组件，确保它们在程序运行期间保持存活
     auto topBar = std::make_unique<mcnp::ui::TopBarWindow>();
     auto sideBar = std::make_unique<mcnp::ui::SideBarWindow>();
     auto bottomBar = std::make_unique<mcnp::ui::BottomBarWindow>();
     auto viewport = std::make_unique<mcnp::ui::ViewportWindow>(&RenderSceneToViewport);
+    
     // 设置全局ViewportWindow指针用于输入控制
     g_viewportWindow = viewport.get();
     topBar->SetWindows(sideBar.get(), bottomBar.get(), viewport.get());
-    layoutManager = std::make_unique<mcnp::ui::UILayoutManager>(*topBar, *sideBar, *bottomBar, *viewport);
     
-    // 注意：这里需要将unique_ptr的所有权转移到外部，但由于layoutManager持有对其他组件的引用，
-    // 我们将组件移动到静态存储或全局变量，或者确保它们在main函数期间保持存活
-    // 目前，这些unique_ptr在函数结束时会被销毁，但layoutManager持有对它们的引用
-    // 这是一个问题。我们需要重新设计或将这些组件存储在main函数中。
-    // 作为临时解决方案，我们将它们移动到静态变量或全局变量。
-    // 更好的方案是将它们作为参数传入。
-    // 现在我们先保持原样，但需要确保它们不会在initUI函数结束时被销毁。
-    // 我们将它们移动到全局unique_ptr中。
-    // 但为了简化，我们先假设layoutManager会在main函数期间保持它们存活。
-    // 实际上，我们需要将topBar、sideBar、bottomBar、viewport作为引用或指针传递给layoutManager。
-    // 原代码中layoutManager接受引用，所以我们需要确保这些对象在main函数期间保持存活。
-    // 我们将在main函数中创建这些对象，然后传递给initUI。
-    // 修改：我们将这些对象的创建移到main函数中，然后通过参数传递给initUI。
-    // 但为了保持改动最小，我们暂时将它们作为静态变量。
-    static auto topBarStatic = std::move(topBar);
-    static auto sideBarStatic = std::move(sideBar);
-    static auto bottomBarStatic = std::move(bottomBar);
-    static auto viewportStatic = std::move(viewport);
+    // 创建UILayoutManager实例，它会接管UI组件的所有权
+    layoutManager = std::make_unique<mcnp::ui::UILayoutManager>(
+        std::move(topBar), 
+        std::move(sideBar), 
+        std::move(bottomBar), 
+        std::move(viewport)
+    );
     
     return true;
 }

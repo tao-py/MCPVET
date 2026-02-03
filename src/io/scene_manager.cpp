@@ -1,5 +1,6 @@
 #include "scene_manager.h"
 #include "config_manager.h"  // 现在包含了全局变量声明
+#include "../path/savepath.h"        // 可执行文件路径获取
 #include <filesystem>
 #include <iostream>
 #include <limits>
@@ -7,15 +8,58 @@
 
 namespace fs = std::filesystem;
 
-// 新增：建模文件路径
-const std::string CUBE_MODEL_FILE = "models/cube.model";
-const std::string SPHERE_MODEL_FILE = "models/sphere.model";
-const std::string CYLINDER_MODEL_FILE = "models/cylinder.model";
-const std::string PLANE_MODEL_FILE = "models/plane.model";
+// 新增：建模文件路径（相对于可执行文件目录）
+const std::string CUBE_MODEL_FILE = []() -> std::string {
+    const std::string& exeDir = getExecutableDirectoryString();
+    return exeDir.empty() ? "models/cube.model" : (exeDir + "/models/cube.model");
+}();
+const std::string SPHERE_MODEL_FILE = []() -> std::string {
+    const std::string& exeDir = getExecutableDirectoryString();
+    return exeDir.empty() ? "models/sphere.model" : (exeDir + "/models/sphere.model");
+}();
+const std::string CYLINDER_MODEL_FILE = []() -> std::string {
+    const std::string& exeDir = getExecutableDirectoryString();
+    return exeDir.empty() ? "models/cylinder.model" : (exeDir + "/models/cylinder.model");
+}();
+const std::string PLANE_MODEL_FILE = []() -> std::string {
+    const std::string& exeDir = getExecutableDirectoryString();
+    return exeDir.empty() ? "models/plane.model" : (exeDir + "/models/plane.model");
+}();
 
 void ensureSceneDirectory(const std::string& filepath) {
+    static bool directoriesEnsured = false;
+    if (!directoriesEnsured) {
+        // 确保可执行文件目录下存在必要的子目录
+        // logs目录已在LogManager中创建，此处只创建models和user/scenes
+        const std::string& exeDir = getExecutableDirectoryString();
+        if (!exeDir.empty()) {
+            fs::path baseDir(exeDir);
+            fs::path scenesDir = baseDir / "user" / "scenes";
+            fs::path modelsDir = baseDir / "models";
+            
+            try {
+                // 只创建尚未被其他模块创建的目录
+                fs::create_directories(scenesDir);
+                fs::create_directories(modelsDir);
+            } catch (const fs::filesystem_error&) {
+                // 忽略创建目录失败，后续操作可能继续
+            }
+        }
+        directoriesEnsured = true;
+    }
+    
+    // 处理传入的文件路径
     fs::path path(filepath);
     fs::path dir = path.parent_path();
+    
+    // 如果路径是相对路径，则将其转换为基于可执行文件目录的绝对路径
+    if (path.is_relative()) {
+        const std::string& exeDir = getExecutableDirectoryString();
+        if (!exeDir.empty()) {
+            path = fs::path(exeDir) / path;
+            dir = path.parent_path();
+        }
+    }
     
     if (!dir.empty() && !fs::exists(dir)) {
         fs::create_directories(dir);

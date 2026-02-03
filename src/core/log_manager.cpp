@@ -1,11 +1,19 @@
 #include "log_manager.h"
+#include "../path/savepath.h"        // 可执行文件路径获取
 #include <iomanip>
 #include <chrono>
 #include <ctime>
 
 LogManager* LogManager::instance = nullptr;
 
-LogManager::LogManager() : logDirectory("logs") {
+LogManager::LogManager() {
+    // 设置日志目录为可执行文件目录下的 logs 文件夹
+    const std::string& exeDir = getExecutableDirectoryString();
+    if (!exeDir.empty()) {
+        logDirectory = exeDir + "/logs";
+    } else {
+        logDirectory = "logs";  // 回退到当前目录
+    }
     ensureLogDirectory();
     currentDate = getCurrentDateString();
 }
