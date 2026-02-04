@@ -238,6 +238,10 @@ bool initImGui()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+#ifdef MCNP_IMGUI_DOCKING
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#endif
     
     // 设置 imgui.ini 保存到可执行文件同目录下
     static std::string imguiIniPath;

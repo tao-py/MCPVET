@@ -5,6 +5,8 @@ project(NCPVET
     LANGUAGES CXX C
 )
 
+option(MCNP_ENABLE_IMGUI_DOCKING "Enable ImGui docking (requires docking branch)" OFF)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -15,6 +17,9 @@ include(cmake/dependencies.cmake)
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 target_compile_definitions(project_options INTERFACE IMGUI_DEFINE_MATH_OPERATORS)
+if(MCNP_ENABLE_IMGUI_DOCKING)
+    target_compile_definitions(project_options INTERFACE IMGUI_HAS_DOCK MCNP_IMGUI_DOCKING)
+endif()
 
 add_library(project_warnings INTERFACE)
 target_compile_options(project_warnings INTERFACE

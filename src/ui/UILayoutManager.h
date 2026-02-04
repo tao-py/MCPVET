@@ -9,11 +9,13 @@
 #endif
 #include <iostream>
 #include <algorithm>
+#include <cstring>
 
 #include "panels/TopBarWindow.h"
 #include "panels/SideBarWindow.h"
 #include "panels/BottomBarWindow.h"
 #include "panels/ViewportWindow.h"
+#include "../io/config_manager.h"
 #include <memory>
 
 namespace mcnp::ui {
@@ -101,10 +103,17 @@ public:
         if (top_.ConsumeResetLayoutRequest()) {
             layoutBuilt_ = false;
             manualLayout_.initialized = false;
+            sceneState.uiSideWidth = kDefaultSideWidth;
+            sceneState.uiBottomHeight = kDefaultBottomHeight;
         }
+        
         side_.Draw();
         viewport_.Draw();
         bottom_.Draw();
+        
+        #ifndef IMGUI_HAS_DOCK
+        DrawManualSplitterOverlay();
+        #endif
     }
 
 private:
@@ -118,6 +127,7 @@ private:
     {
         ImGuiIO& io = ImGui::GetIO();
         (void)io;
+        manualLayoutActive_ = false;
 
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(vp->WorkPos);
@@ -161,9 +171,22 @@ private:
         const ImVec2 workPos = vp->WorkPos;
         const ImVec2 workSize = vp->WorkSize;
 
+        // 调试输出
+        static int dockDebugFrame = 0;
+        dockDebugFrame++;
+        if (dockDebugFrame % 60 == 0) {
+            std::cout << "[DockSpace] Manual layout active. Work area: (" 
+                      << workPos.x << ", " << workPos.y << ") size: (" 
+                      << workSize.x << ", " << workSize.y << ")" << std::endl;
+        }
+
         EnsureManualLayout(workSize);
-        DrawManualSplitters(workPos, workSize);
         ApplyManualLayout(workPos, workSize);
+        manualLayoutActive_ = true;
+        manualWorkPos_ = workPos;
+        manualWorkSize_ = workSize;
+
+
 
         // 注意：窗口的实际绘制在 DrawAll() 中进行，这里只设置位置和大小
         #endif
@@ -203,24 +226,75 @@ private:
         const float minBottom = std::min(kMinBottomHeight, maxBottom);
 
         if (!manualLayout_.initialized) {
-            manualLayout_.sideWidth = std::clamp(side_.Width(), minSide, maxSide);
-            manualLayout_.bottomHeight = std::clamp(bottom_.Height(), minBottom, maxBottom);
+            const float desiredSide = (sceneState.uiSideWidth > 0.0f) ? sceneState.uiSideWidth : side_.Width();
+            const float desiredBottom = (sceneState.uiBottomHeight > 0.0f) ? sceneState.uiBottomHeight : bottom_.Height();
+            manualLayout_.sideWidth = std::clamp(desiredSide, minSide, maxSide);
+            manualLayout_.bottomHeight = std::clamp(desiredBottom, minBottom, maxBottom);
             manualLayout_.initialized = true;
         }
 
         manualLayout_.sideWidth = std::clamp(manualLayout_.sideWidth, minSide, maxSide);
         manualLayout_.bottomHeight = std::clamp(manualLayout_.bottomHeight, minBottom, maxBottom);
+        sceneState.uiSideWidth = manualLayout_.sideWidth;
+        sceneState.uiBottomHeight = manualLayout_.bottomHeight;
     }
 
-    void DrawManualSplitters(const ImVec2& workPos, const ImVec2& workSize)
+    void DrawManualSplitters()
     {
-        ImGuiIO& io = ImGui::GetIO();
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const float splitterSize = 4.0f;
+        ImDrawList* drawList = ImGui::GetForegroundDrawList();
+        const float splitterSize = 6.0f;
 
         // 垂直分割条：Side <-> 右侧区域
-        const ImVec2 vSplitPos(workPos.x + manualLayout_.sideWidth - splitterSize * 0.5f, workPos.y);
-        const ImVec2 vSplitSize(splitterSize, workSize.y);
+        const ImVec2 vSplitPos(manualWorkPos_.x + manualLayout_.sideWidth - splitterSize * 0.5f, manualWorkPos_.y);
+        const ImVec2 vSplitSize(splitterSize, manualWorkSize_.y);
+        const bool vHovered = ImGui::IsMouseHoveringRect(vSplitPos, ImVec2(vSplitPos.x + splitterSize, vSplitPos.y + manualWorkSize_.y));
+        const bool vActive = ImGui::IsMouseDown(0) && ImGui::IsMouseHoveringRect(vSplitPos, ImVec2(vSplitPos.x + splitterSize, vSplitPos.y + manualWorkSize_.y));
+
+        // 水平分割条：Viewport <-> Bottom（仅右侧区域）
+        const float rightWidth = manualWorkSize_.x - manualLayout_.sideWidth;
+        const ImVec2 hSplitPos(manualWorkPos_.x + manualLayout_.sideWidth, 
+                              manualWorkPos_.y + (manualWorkSize_.y - manualLayout_.bottomHeight) - splitterSize * 0.5f);
+        const ImVec2 hSplitSize(rightWidth, splitterSize);
+        const bool hHovered = ImGui::IsMouseHoveringRect(hSplitPos, ImVec2(hSplitPos.x + rightWidth, hSplitPos.y + splitterSize));
+        const bool hActive = ImGui::IsMouseDown(0) && ImGui::IsMouseHoveringRect(hSplitPos, ImVec2(hSplitPos.x + rightWidth, hSplitPos.y + splitterSize));
+
+        const ImU32 vColor = ImGui::GetColorU32(vActive ? ImGuiCol_SeparatorActive : (vHovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
+        const ImU32 hColor = ImGui::GetColorU32(hActive ? ImGuiCol_SeparatorActive : (hHovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
+        const float vVisual = (vActive || vHovered) ? 6.0f : 3.0f;
+        const float hVisual = (hActive || hHovered) ? 6.0f : 3.0f;
+        const float vVisualX = vSplitPos.x + (splitterSize - vVisual) * 0.5f;
+        const float hVisualY = hSplitPos.y + (splitterSize - hVisual) * 0.5f;
+        
+        drawList->AddRectFilled(ImVec2(vVisualX, vSplitPos.y), ImVec2(vVisualX + vVisual, vSplitPos.y + manualWorkSize_.y), vColor);
+        drawList->AddRectFilled(ImVec2(hSplitPos.x, hVisualY), ImVec2(hSplitPos.x + rightWidth, hVisualY + hVisual), hColor);
+    }
+    
+    void HandleManualSplitterInteraction()
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        const float splitterSize = 6.0f;
+        
+        // 调试输出 - 每次交互时输出
+        static int debugFrame = 0;
+        debugFrame++;
+        if (debugFrame % 30 == 0) { // 每半秒一次
+            std::cout << "[Splitter] Window Pos: (" << manualWorkPos_.x << ", " << manualWorkPos_.y 
+                      << "), Size: (" << manualWorkSize_.x << ", " << manualWorkSize_.y 
+                      << "), Side: " << manualLayout_.sideWidth 
+                      << ", Bottom: " << manualLayout_.bottomHeight 
+                      << ", Mouse: (" << io.MousePos.x << ", " << io.MousePos.y << ")" << std::endl;
+        }
+
+        // 计算分割条的位置
+        const ImVec2 vSplitPos(manualWorkPos_.x + manualLayout_.sideWidth - splitterSize * 0.5f, manualWorkPos_.y);
+        const ImVec2 vSplitSize(splitterSize, manualWorkSize_.y);
+        
+        const float rightWidth = manualWorkSize_.x - manualLayout_.sideWidth;
+        const ImVec2 hSplitPos(manualWorkPos_.x + manualLayout_.sideWidth, 
+                              manualWorkPos_.y + (manualWorkSize_.y - manualLayout_.bottomHeight) - splitterSize * 0.5f);
+        const ImVec2 hSplitSize(rightWidth, splitterSize);
+
+        // 垂直分割条：Side <-> 右侧区域
         ImGui::SetCursorScreenPos(vSplitPos);
         ImGui::InvisibleButton("##SplitterVertical", vSplitSize);
         const bool vHovered = ImGui::IsItemHovered();
@@ -233,9 +307,6 @@ private:
         }
 
         // 水平分割条：Viewport <-> Bottom（仅右侧区域）
-        const float rightWidth = workSize.x - manualLayout_.sideWidth;
-        const ImVec2 hSplitPos(workPos.x + manualLayout_.sideWidth, workPos.y + (workSize.y - manualLayout_.bottomHeight) - splitterSize * 0.5f);
-        const ImVec2 hSplitSize(rightWidth, splitterSize);
         ImGui::SetCursorScreenPos(hSplitPos);
         ImGui::InvisibleButton("##SplitterHorizontal", hSplitSize);
         const bool hHovered = ImGui::IsItemHovered();
@@ -248,12 +319,83 @@ private:
         }
 
         // 夹紧，保证 Viewport 最小尺寸
-        EnsureManualLayout(workSize);
+        EnsureManualLayout(manualWorkSize_);
 
-        const ImU32 vColor = ImGui::GetColorU32(vActive ? ImGuiCol_SeparatorActive : (vHovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
-        const ImU32 hColor = ImGui::GetColorU32(hActive ? ImGuiCol_SeparatorActive : (hHovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
-        drawList->AddRectFilled(vSplitPos, ImVec2(vSplitPos.x + splitterSize, vSplitPos.y + workSize.y), vColor);
-        drawList->AddRectFilled(hSplitPos, ImVec2(hSplitPos.x + rightWidth, hSplitPos.y + splitterSize), hColor);
+        const bool wantsCursor = vHovered || vActive || hHovered || hActive;
+        SetSplitterCursor(wantsCursor);
+    }
+
+    void DrawManualSplitterOverlay()
+    {
+#ifdef IMGUI_HAS_DOCK
+        return;
+#else
+        if (!manualLayoutActive_) {
+            SetSplitterCursor(false);
+            return;
+        }
+
+        ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                        ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoSavedSettings |
+                                        ImGuiWindowFlags_NoBackground;
+
+        ImGui::SetNextWindowPos(manualWorkPos_);
+        ImGui::SetNextWindowSize(manualWorkSize_);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin("##ManualSplitterOverlay", nullptr, overlayFlags);
+        ImGui::PopStyleVar();
+
+        HandleManualSplitterInteraction();
+        ApplyManualLayout(manualWorkPos_, manualWorkSize_);
+        DrawManualSplitters();
+
+        ImGui::End();
+#endif
+    }
+
+    void SetSplitterCursor(bool active)
+    {
+        if (window == nullptr) {
+            return;
+        }
+
+        static GLFWcursor* splitterCursor = nullptr;
+        static bool cursorInitialized = false;
+        if (!cursorInitialized) {
+            GLFWimage image{};
+            image.width = 16;
+            image.height = 16;
+            static unsigned char pixels[16 * 16 * 4];
+            std::memset(pixels, 0, sizeof(pixels));
+
+            auto setPixel = [&](int x, int y) {
+                if (x < 0 || x >= image.width || y < 0 || y >= image.height) {
+                    return;
+                }
+                const int idx = (y * image.width + x) * 4;
+                pixels[idx + 0] = 255;
+                pixels[idx + 1] = 255;
+                pixels[idx + 2] = 255;
+                pixels[idx + 3] = 255;
+            };
+
+            // Small upward arrow: triangle head + stem.
+            for (int y = 0; y <= 4; ++y) {
+                for (int x = 8 - y; x <= 8 + y; ++x) {
+                    setPixel(x, y);
+                }
+            }
+            for (int y = 5; y <= 13; ++y) {
+                setPixel(8, y);
+            }
+
+            image.pixels = pixels;
+            splitterCursor = glfwCreateCursor(&image, 8, 0);
+            cursorInitialized = true;
+        }
+
+        glfwSetCursor(window, active ? splitterCursor : nullptr);
     }
 
     void ApplyManualLayout(const ImVec2& workPos, const ImVec2& workSize) const
@@ -299,12 +441,17 @@ private:
     static constexpr float kMinBottomHeight = 160.0f;
     static constexpr float kMinViewportWidth = 400.0f;
     static constexpr float kMinViewportHeight = 300.0f;
+    static constexpr float kDefaultSideWidth = 320.0f;
+    static constexpr float kDefaultBottomHeight = 200.0f;
     struct ManualLayoutState {
-        float sideWidth{320.0f};
-        float bottomHeight{200.0f};
+        float sideWidth{kDefaultSideWidth};
+        float bottomHeight{kDefaultBottomHeight};
         bool initialized{false};
     };
     ManualLayoutState manualLayout_{};
+    bool manualLayoutActive_{false};
+    ImVec2 manualWorkPos_{0.0f, 0.0f};
+    ImVec2 manualWorkSize_{0.0f, 0.0f};
 };
 
 } // namespace mcnp::ui

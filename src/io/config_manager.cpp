@@ -122,6 +122,8 @@ void saveConfig()
     config["ui_settings"]["font_size"] = sceneState.uiFontSize;
     config["ui_settings"]["grid_color"] = {sceneState.gridColor.r, sceneState.gridColor.g, sceneState.gridColor.b};
     config["ui_settings"]["show_grid"] = sceneState.showGrid;
+    config["ui_settings"]["layout_side_width"] = sceneState.uiSideWidth;
+    config["ui_settings"]["layout_bottom_height"] = sceneState.uiBottomHeight;
     
     // 写入文件（带错误处理）
     std::ofstream file(CONFIG_FILE);
@@ -199,6 +201,12 @@ void loadConfig()
         }
         if (ui.contains("show_grid") && ui["show_grid"].is_boolean()) {
             sceneState.showGrid = ui["show_grid"];
+        }
+        if (ui.contains("layout_side_width") && ui["layout_side_width"].is_number()) {
+            sceneState.uiSideWidth = ui["layout_side_width"];
+        }
+        if (ui.contains("layout_bottom_height") && ui["layout_bottom_height"].is_number()) {
+            sceneState.uiBottomHeight = ui["layout_bottom_height"];
         }
     }
     

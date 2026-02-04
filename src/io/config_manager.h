@@ -43,6 +43,10 @@ struct SceneState {
     
     // 新增：FPS限制
     int fpsLimit;
+
+    // 新增：UI布局尺寸（非Docking模式持久化）
+    float uiSideWidth;
+    float uiBottomHeight;
     
     SceneState() : 
         viewMatrix(glm::mat4(1.0f)),
@@ -54,7 +58,9 @@ struct SceneState {
         gridColor(0.5f, 0.5f, 0.5f),
         showGrid(true),
         uiFontSize(30.0f),
-        fpsLimit(60) {}
+        fpsLimit(60),
+        uiSideWidth(320.0f),
+        uiBottomHeight(200.0f) {}
 };
 
 // 快捷键配置
